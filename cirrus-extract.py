@@ -41,7 +41,8 @@ import os
 
 # ----------------------------------------------------------------------
 
-def process_dump(input_file, out_path):
+
+def process_dump(input_file, out_path, quiet=False):
     """
     :param input_file: name of the wikipedia dump file; '-' to read from stdin
     :param out_path: directory where to store extracted data, or '-' for stdout
@@ -86,7 +87,8 @@ def process_dump(input_file, out_path):
                 out_fname = os.path.join(out_path, title)
                 with open(out_fname, "wb") as o:
                       o.write(text.encode("utf-8"))
-                print("written:", out_fname)
+                if not quiet:
+                    print(out_fname)
 
                 # print(title)
                 # print()
@@ -104,6 +106,7 @@ def title_to_filename(title):
     title = title + ".txt"
     return title
 
+
 def dir_name_from_input(inp):
     """
     Take a file path as an input, returns the language code & the wiki name.
@@ -116,6 +119,7 @@ def dir_name_from_input(inp):
 
 
 # ----------------------------------------------------------------------
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -132,6 +136,13 @@ def main():
         "--output_dir",
         default="cirrus",
         help="directory for extracted files (or '-' for dumping to stdin), defaults to 'cirrus'",
+    )
+
+    groupO.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="suppresses all informational printing."
     )
 
     args = parser.parse_args()
@@ -152,7 +163,7 @@ def main():
             print("could not create:", out_path)
             return
 
-    process_dump(input_file, out_path)
+    process_dump(input_file, out_path, args.quiet)
 
 
 if __name__ == "__main__":
