@@ -42,7 +42,7 @@ import os
 # ----------------------------------------------------------------------
 
 
-def process_dump(input_file, out_path, quiet=False):
+def process_dump(input_file, out_path, args):
     """
     :param input_file: name of the wikipedia dump file; '-' to read from stdin
     :param out_path: directory where to store extracted data, or '-' for stdout
@@ -54,16 +54,23 @@ def process_dump(input_file, out_path, quiet=False):
     else:
         inp = gzip.open(input_file)
 
+    count = 0
+
     # process dump
     # format
     # {"index":{"_type":"page","_id":"3825914"}}
     # {"namespace":0,"title":TITLE,"timestamp":"2014-06-29T15:51:09Z","text":TEXT,...}
     while True:
+
+        count += 1
+
         line = inp.readline()
         if not line:
             break
+
         # reads the index line, e.g.: '{"index":{"_type":"page","_id":"56720"}}
         index = json.loads(line)
+
         # readline reads the next one, containing the actual document
         content = json.loads(inp.readline())
         doc_type = index["index"]["_type"]
@@ -87,9 +94,15 @@ def process_dump(input_file, out_path, quiet=False):
 
                 out_fname = os.path.join(out_path, title)
                 with open(out_fname, "wb") as o:
-                      o.write(text.encode("utf-8"))
-                if not quiet:
+                    o.write(text.encode("utf-8"))
+                if not args.quiet:
                     print(out_fname)
+                if args.count:
+                    # https://stackoverflow.com/a/943921
+                    columns = int(os.popen("stty size", "r").read().split()[0])
+                    print(" " * columns, end="\r")
+                    msg = f"{count} | {out_fname}"
+                    print(f"{msg[: columns - 5]}...", end="\r")
 
                 # print(title)
                 # print()
@@ -107,14 +120,10 @@ REGICES_FR = {
     "limitations": re.compile(
         r"En raison de limitations techniques, la typographie souhaitable du .*?, n\'a pu être restituée correctement ci-dessus. "
     ),
-    "précédent": re.compile(
-        r"\s*<\s+Précédent\s*(\||$)"
-    ),
-    "suivant": re.compile(
-        r"\s*\|*\s+Suivant\s+>\s*$"
-    )
-
+    "précédent": re.compile(r"\s*<\s+Précédent\s*(\||$)"),
+    "suivant": re.compile(r"\s*\|*\s+Suivant\s+>\s*$"),
 }
+
 
 def clean_text(text):
     # drop references:
@@ -171,12 +180,22 @@ def main():
         "-q",
         "--quiet",
         action="store_true",
-        help="suppresses all informational printing."
+        help="suppresses all informational printing.",
+    )
+
+    groupO.add_argument(
+        "-c",
+        "--count",
+        action="store_true",
+        help="prints an ongoing count of the processed files. Will automatically triger 'quiet'",
     )
 
     args = parser.parse_args()
 
     input_file = args.input
+
+    if args.count:
+        args.quiet = True
 
     if input_file != "-" and args.output_dir != "-":
         wikiname = dir_name_from_input(input_file)
@@ -192,7 +211,10 @@ def main():
             print("could not create:", out_path)
             return
 
-    process_dump(input_file, out_path, args.quiet)
+    process_dump(input_file, out_path, args)
+
+    if args.count:
+        print("\n")
 
 
 if __name__ == "__main__":
