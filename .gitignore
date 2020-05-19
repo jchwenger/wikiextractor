@@ -91,3 +91,6 @@ ENV/
 
 # Editor files
 *.idea
+
+# vim
+*.sw*
