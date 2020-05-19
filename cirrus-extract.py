@@ -80,10 +80,11 @@ def process_dump(input_file, out_path, quiet=False):
             else:
 
                 title = title_to_filename(content["title"])
-                text = content["text"]
-                # drop references:
-                # ^ The Penguin Dictionary
-                # text = re.sub(r'  \^ .*', '', text)
+                if os.path.basename(out_path).startswith("fr"):
+                    text = clean_text(content["text"])
+                else:
+                    text = content["text"]
+
                 out_fname = os.path.join(out_path, title)
                 with open(out_fname, "wb") as o:
                       o.write(text.encode("utf-8"))
@@ -97,6 +98,34 @@ def process_dump(input_file, out_path, quiet=False):
                 # print(content["source_text"])
                 # print("-"*40)
                 # print()
+
+
+REGICES_FR = {
+    "navigation": re.compile(
+        r"Début de la boite de navigation du chapitre fin de la boite de navigation du chapitre "
+    ),
+    "limitations": re.compile(
+        r"En raison de limitations techniques, la typographie souhaitable du .*?, n\'a pu être restituée correctement ci-dessus. "
+    ),
+    "précédent": re.compile(
+        r"\s*<\s+Précédent\s*(\||$)"
+    ),
+    "suivant": re.compile(
+        r"\s*\|*\s+Suivant\s+>\s*$"
+    )
+
+}
+
+def clean_text(text):
+    # drop references:
+    # ^ The Penguin Dictionary
+    # text = re.sub(r'  \^ .*', '', text)
+    text = re.sub(REGICES_FR["suivant"], "", text)
+    text = re.sub(REGICES_FR["précédent"], "", text)
+    text = re.sub(REGICES_FR["navigation"], "", text)
+    text = re.sub(REGICES_FR["limitations"], "", text)
+    return text
+
 
 def title_to_filename(title):
     title = re.sub(r"[  \/,?!();:'\[\]]+", "-", title)
